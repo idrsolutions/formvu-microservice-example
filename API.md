@@ -170,12 +170,12 @@ ___
 
 Results of the conversion are viewable at:
 
-**URL:** ```/output/[uuid]/[filename]/index.html```
+**URL:** ```/output/[uuid]/[filename]/form.html```
 
 **Method:** GET
 
 **Example request:**
 
-```GET https://[URL]/output/[uuid]/[filename]/index.html```
+```GET https://[URL]/output/[uuid]/[filename]/form.html```
 
 ___
