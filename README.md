@@ -42,7 +42,7 @@ See our [cloud platform tutorials](https://docs.idrsolutions.com/formvu/docker-d
 
 ### docker-compose deployment: ###
 
-Docker usage has moved to it's own project [here](https://github.com/idrsolutions/formvu-docker).
+Docker usage can be found in its own project [here](https://github.com/idrsolutions/formvu-docker).
 
 -----
 
