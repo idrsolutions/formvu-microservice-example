@@ -93,14 +93,9 @@ public class FormVuServlet extends BaseServlet {
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
 
-        final String userPdfFilePath;
-
-        final boolean isPDF = ext.toLowerCase().endsWith("pdf");
-        if (!isPDF) {
+        if (!"pdf".equalsIgnoreCase(ext)) {
             individual.doError(1070, "Internal error processing file - input file must be a PDF Form File");
             return;
-        } else {
-            userPdfFilePath = inputDir + "/" + fileName;
         }
 
         //Makes the directory for the output file
@@ -109,8 +104,7 @@ public class FormVuServlet extends BaseServlet {
         individual.setState("processing");
 
         try {
-
-            final File inFile = new File(userPdfFilePath);
+            final File inFile = new File(inputDir + "/" + fileName);
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inFile.getAbsolutePath());
             final boolean isForm = decoder.isForm();
