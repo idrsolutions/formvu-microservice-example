@@ -42,7 +42,7 @@ See our [cloud platform tutorials](https://support.idrsolutions.com/formvu/tutor
 
 ### docker-compose deployment: ###
 
-Docker usage has moved to it's own project [here](https://github.com/idrsolutions/formvu-docker).
+Docker usage can be found in its own project [here](https://github.com/idrsolutions/formvu-docker).
 
 -----
 
@@ -64,7 +64,7 @@ Got questions? You can contact us [here](https://idrsolutions.atlassian.net/serv
 
 -----
 
-Copyright 2020 IDRsolutions
+Copyright 2021 IDRsolutions
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

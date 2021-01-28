@@ -3,7 +3,7 @@
  *
  * Project Info: https://github.com/idrsolutions/formvu-microservice-example
  *
- * Copyright 2018 IDRsolutions
+ * Copyright 2021 IDRsolutions
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,11 +68,7 @@ public class FormVuServlet extends BaseServlet {
             "NO_MENU"};
 
     /**
-     * Converts given pdf file or office document to html or svg using FormVu-HTML
-     * and FormVu-SVG respectively.
-     * <p>
-     * LibreOffice is used to preconvert office documents to PDF for FormVu to
-     * process.
+     * Converts given pdf file to html using FormVu.
      * <p>
      * See API docs for information on how this method communicates via the
      * individual object to the client.
@@ -97,16 +93,9 @@ public class FormVuServlet extends BaseServlet {
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
 
-        final String userPdfFilePath;
-
-        final boolean isPDF = ext.toLowerCase().endsWith("pdf");
-        if (!isPDF) {
-            if (!convertToPDF(inputFile, individual)) {
-                return;
-            }
-            userPdfFilePath = inputDir + "/" + fileNameWithoutExt + ".pdf";
-        } else {
-            userPdfFilePath = inputDir + "/" + fileName;
+        if (!"pdf".equalsIgnoreCase(ext)) {
+            individual.doError(1070, "Internal error processing file - input file must be a PDF Form File");
+            return;
         }
 
         //Makes the directory for the output file
@@ -115,8 +104,7 @@ public class FormVuServlet extends BaseServlet {
         individual.setState("processing");
 
         try {
-
-            final File inFile = new File(userPdfFilePath);
+            final File inFile = new File(inputDir + "/" + fileName);
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inFile.getAbsolutePath());
             final boolean isForm = decoder.isForm();
@@ -204,6 +192,7 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateBoolean("org.jpedal.pdf2html.separateTextToWords", false);
         settingsValidator.validateString("org.jpedal.pdf2html.textMode", validTextModeOptions, false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.useLegacyImageFileType", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
@@ -212,42 +201,6 @@ public class FormVuServlet extends BaseServlet {
 
         individual.setSettings(settings);
 
-        return true;
-    }
-
-    /**
-     * Converts an office file to PDF using LibreOffice.
-     *
-     * @param file The office file to convert to PDF
-     * @param individual The Individual on which to set the error if one occurs
-     * @return true on success, false on failure
-     * occurs
-     */
-    private static boolean convertToPDF(final File file, final Individual individual) {
-        final String uuid = individual.getUuid();
-        final String uniqueLOProfile = TEMP_DIR + "LO-" + uuid;
-
-        final ProcessBuilder pb = new ProcessBuilder("soffice",
-                "-env:UserInstallation=file://" + uniqueLOProfile,
-                "--headless", "--convert-to", "pdf", file.getName());
-
-        pb.directory(new File(file.getParent()));
-
-        try {
-            final Process process = pb.start();
-            if (!process.waitFor(1, TimeUnit.MINUTES)) {
-                process.destroy();
-                individual.doError(1050, "Libreoffice timed out after 1 minute");
-                return false;
-            }
-        } catch (final IOException | InterruptedException e) {
-            e.printStackTrace(); // soffice location may need to be added to the path
-            LOG.severe(e.getMessage());
-            individual.doError(1070, "Internal error processing file");
-            return false;
-        } finally {
-            deleteFolder(new File(uniqueLOProfile));
-        }
         return true;
     }
 }
