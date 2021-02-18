@@ -193,6 +193,7 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateString("org.jpedal.pdf2html.textMode", validTextModeOptions, false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.useLegacyImageFileType", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
