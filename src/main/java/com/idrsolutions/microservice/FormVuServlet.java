@@ -34,10 +34,8 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -194,6 +192,7 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateBoolean("org.jpedal.pdf2html.useLegacyImageFileType", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
+        settingsValidator.validateString("org.jpedal.pdf2html.submitUrl", ".*", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
