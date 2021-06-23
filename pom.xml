@@ -6,7 +6,7 @@
     <groupId>com.idrsolutions</groupId>
     <artifactId>formvu-microservice-example</artifactId>
     <packaging>war</packaging>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <name>FormVu Microservice Example</name>
 
     <dependencies>
