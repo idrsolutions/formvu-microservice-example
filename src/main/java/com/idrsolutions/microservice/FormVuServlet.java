@@ -86,15 +86,17 @@ public class FormVuServlet extends BaseServlet {
 
         final String fileName = inputFile.getName();
         final String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
+        if (!"pdf".equalsIgnoreCase(ext)) {
+            individual.doError(1070, "Internal error processing file - input file must be a PDF Form File");
+            return;
+        }
+
         final String fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
         // To avoid repeated calls to getParent() and getAbsolutePath()
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
 
-        if (!"pdf".equalsIgnoreCase(ext)) {
-            individual.doError(1070, "Internal error processing file - input file must be a PDF Form File");
-            return;
-        }
+        final String userPdfFilePath = inputDir + "/" + fileName;
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
@@ -102,7 +104,7 @@ public class FormVuServlet extends BaseServlet {
         individual.setState("processing");
 
         try {
-            final File inFile = new File(inputDir + "/" + fileName);
+            final File inFile = new File(userPdfFilePath);
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inFile.getAbsolutePath());
             final boolean isForm = decoder.isForm();
@@ -193,6 +195,7 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
         settingsValidator.validateString("org.jpedal.pdf2html.submitUrl", "[-a-zA-Z0-9@:%._\\+~#=]{1,256}([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)", false);
+        settingsValidator.validateBoolean("experimentalFormVuAPI", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
