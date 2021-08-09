@@ -193,6 +193,8 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
         settingsValidator.validateString("org.jpedal.pdf2html.submitUrl", "[-a-zA-Z0-9@:%._\\+~#=]{1,256}([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableFDFJavaScript", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.useFormVuAPI", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
