@@ -52,9 +52,9 @@ public class FormVuServlet extends BaseServlet {
     private static final Logger LOG = Logger.getLogger(FormVuServlet.class.getName());
 
     static {
-        BaseServlet.setInputPath(USER_HOME + "/.idr/formvu-microservice/input/");
-        BaseServlet.setOutputPath(USER_HOME + "/.idr/formvu-microservice/output/");
-        FileServlet.setBasePath(USER_HOME + "/.idr/formvu-microservice/output");
+        setInputPath(USER_HOME + "/.idr/formvu-microservice/input/");
+        setOutputPath(USER_HOME + "/.idr/formvu-microservice/output/");
+        OutputFileServlet.setBasePath(USER_HOME + "/.idr/formvu-microservice/output");
     }
 
     private static final String[] validTextModeOptions = {
