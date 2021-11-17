@@ -20,6 +20,7 @@
  */
 package com.idrsolutions.microservice;
 
+import com.idrsolutions.microservice.utils.DefaultFileServlet;
 import com.idrsolutions.microservice.utils.SettingsValidator;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
@@ -127,7 +128,7 @@ public class FormVuServlet extends BaseServlet {
             ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
                     outputDirStr + "/" + fileNameWithoutExt + ".zip");
 
-            final String outputPathInDocroot = individual.getUuid() + "/" + fileNameWithoutExt;
+            final String outputPathInDocroot = individual.getUuid() + "/" + DefaultFileServlet.encodeURI(fileNameWithoutExt);
 
             individual.setValue("previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
             individual.setValue("downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
