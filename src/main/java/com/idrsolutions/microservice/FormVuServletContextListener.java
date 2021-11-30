@@ -33,7 +33,7 @@ public class FormVuServletContextListener extends BaseServletContextListener {
     }
 
     private static void validateConcurrentConversions(final Properties properties) {
-        String concurrentConversions = properties.getProperty("service.concurrentConversion");
+        final String concurrentConversions = properties.getProperty("service.concurrentConversion");
         if (concurrentConversions == null || concurrentConversions.isEmpty() || !concurrentConversions.matches("\\d+") || Integer.parseInt(concurrentConversions) <= 0) {
             final int availableProcessors = Runtime.getRuntime().availableProcessors();
             properties.setProperty("service.concurrentConversion", "" + availableProcessors);
