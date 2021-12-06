@@ -27,19 +27,8 @@ public class FormVuServletContextListener extends BaseServletContextListener {
     @Override
     public void validateConfigFileValues(final Properties propertiesFile) {
 
-        //service.concurrentConversion
-        validateConcurrentConversions(propertiesFile);
-
+        super.validateConfigFileValues(propertiesFile);
+        
     }
 
-    private static void validateConcurrentConversions(final Properties properties) {
-        final String concurrentConversions = properties.getProperty("service.concurrentConversion");
-        if (concurrentConversions == null || concurrentConversions.isEmpty() || !concurrentConversions.matches("\\d+") || Integer.parseInt(concurrentConversions) <= 0) {
-            final int availableProcessors = Runtime.getRuntime().availableProcessors();
-            properties.setProperty("service.concurrentConversion", "" + availableProcessors);
-            final String logDefaultUse = "Properties value for \"service.concurrentConversion\" incorrect, should be a positive integer. Using a value of " + availableProcessors + " based on available processors";
-            LOG.log(Level.WARNING, logDefaultUse);
-        }
-
-    }
 }
