@@ -2,7 +2,6 @@ package com.idrsolutions.microservice;
 
 import javax.servlet.annotation.WebListener;
 import java.util.Properties;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @WebListener
