@@ -45,7 +45,7 @@ import java.util.logging.Logger;
  *
  * @see BaseServlet
  */
-@WebServlet(name = "formvu", urlPatterns = "/formvu", loadOnStartup = 1)
+@WebServlet(name = "formvu", urlPatterns = "/formvu")
 @MultipartConfig
 public class FormVuServlet extends BaseServlet {
 

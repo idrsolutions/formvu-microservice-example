@@ -1,5 +1,6 @@
 package com.idrsolutions.microservice;
 
+import javax.servlet.ServletContextEvent;
 import javax.servlet.annotation.WebListener;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -16,6 +17,13 @@ public class FormVuServletContextListener extends BaseServletContextListener {
             userDir += System.getProperty("file.separator");
         }
         return userDir + "/.idr/formvu-microservice/";
+    }
+
+    @Override
+    public void contextInitialized(final ServletContextEvent servletContextEvent) {
+        super.contextInitialized(servletContextEvent);
+        Properties propertiesFile = (Properties) servletContextEvent.getServletContext().getAttribute("properties");
+        OutputFileServlet.setBasePath(propertiesFile.getProperty("outputPath"));
     }
 
     @Override
