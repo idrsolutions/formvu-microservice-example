@@ -3,12 +3,9 @@ package com.idrsolutions.microservice;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.annotation.WebListener;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 @WebListener
 public class FormVuServletContextListener extends BaseServletContextListener {
-
-    private static final Logger LOG = Logger.getLogger(FormVuServletContextListener.class.getName());
 
     @Override
     public String getConfigPath() {
@@ -22,7 +19,7 @@ public class FormVuServletContextListener extends BaseServletContextListener {
     @Override
     public void contextInitialized(final ServletContextEvent servletContextEvent) {
         super.contextInitialized(servletContextEvent);
-        Properties propertiesFile = (Properties) servletContextEvent.getServletContext().getAttribute("properties");
+        final Properties propertiesFile = (Properties) servletContextEvent.getServletContext().getAttribute("properties");
         OutputFileServlet.setBasePath(propertiesFile.getProperty("outputPath"));
     }
 
@@ -33,9 +30,7 @@ public class FormVuServletContextListener extends BaseServletContextListener {
 
     @Override
     public void validateConfigFileValues(final Properties propertiesFile) {
-
         super.validateConfigFileValues(propertiesFile);
-        
     }
 
 }
