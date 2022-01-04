@@ -28,9 +28,4 @@ public class FormVuServletContextListener extends BaseServletContextListener {
         return "formvu-microservice.properties";
     }
 
-    @Override
-    public void validateConfigFileValues(final Properties propertiesFile) {
-        super.validateConfigFileValues(propertiesFile);
-    }
-
 }
