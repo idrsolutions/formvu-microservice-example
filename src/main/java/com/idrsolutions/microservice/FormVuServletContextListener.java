@@ -19,7 +19,7 @@ public class FormVuServletContextListener extends BaseServletContextListener {
     @Override
     public void contextInitialized(final ServletContextEvent servletContextEvent) {
         super.contextInitialized(servletContextEvent);
-        final Properties propertiesFile = (Properties) servletContextEvent.getServletContext().getAttribute("properties");
+        final Properties propertiesFile = (Properties) servletContextEvent.getServletContext().getAttribute(KEY_PROPERTIES);
         OutputFileServlet.setBasePath(propertiesFile.getProperty("outputPath"));
     }
 
