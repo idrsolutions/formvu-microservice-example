@@ -46,17 +46,11 @@ import java.util.logging.Logger;
  *
  * @see BaseServlet
  */
-@WebServlet(name = "formvu", urlPatterns = "/formvu", loadOnStartup = 1)
+@WebServlet(name = "formvu", urlPatterns = "/formvu")
 @MultipartConfig
 public class FormVuServlet extends BaseServlet {
 
     private static final Logger LOG = Logger.getLogger(FormVuServlet.class.getName());
-
-    static {
-        setInputPath(USER_HOME + "/.idr/formvu-microservice/input/");
-        setOutputPath(USER_HOME + "/.idr/formvu-microservice/output/");
-        OutputFileServlet.setBasePath(USER_HOME + "/.idr/formvu-microservice/output");
-    }
 
     private static final String[] validTextModeOptions = {
             "svg_realtext",
