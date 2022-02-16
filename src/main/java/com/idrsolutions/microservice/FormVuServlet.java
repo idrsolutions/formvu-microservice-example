@@ -85,10 +85,10 @@ public class FormVuServlet extends BaseServlet {
 
         final Map<String, String> conversionParams;
         try {
-            final Map<String, String> settings = DBHandler.INSTANCE.getSettings(uuid);
+            final Map<String, String> settings = DBHandler.getInstance().getSettings(uuid);
             conversionParams = settings != null ? settings : new HashMap<>();
         } catch (final SQLException e) {
-            DBHandler.INSTANCE.setError(uuid, 500, "Database failure");
+            DBHandler.getInstance().setError(uuid, 500, "Database failure");
             return;
         }
 
@@ -100,14 +100,14 @@ public class FormVuServlet extends BaseServlet {
         final String outputDirStr = outputDir.getAbsolutePath();
 
         if (!"pdf".equalsIgnoreCase(ext)) {
-            DBHandler.INSTANCE.setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
+            DBHandler.getInstance().setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
             return;
         }
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
 
-        DBHandler.INSTANCE.setState(uuid, "processing");
+        DBHandler.getInstance().setState(uuid, "processing");
 
         try {
             final File inFile = new File(inputDir + "/" + fileName);
@@ -131,14 +131,14 @@ public class FormVuServlet extends BaseServlet {
 
             final String outputPathInDocroot = uuid + "/" + DefaultFileServlet.encodeURI(fileNameWithoutExt);
 
-            DBHandler.INSTANCE.setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
-            DBHandler.INSTANCE.setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
+            DBHandler.getInstance().setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
+            DBHandler.getInstance().setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
 
-            DBHandler.INSTANCE.setState(uuid, "processed");
+            DBHandler.getInstance().setState(uuid, "processed");
 
         } catch (final Throwable ex) {
             LOG.log(Level.SEVERE, "Exception thrown when converting input", ex);
-            DBHandler.INSTANCE.setError(uuid, 1220, "Exception thrown when converting input" + ex.getMessage());
+            DBHandler.getInstance().setError(uuid, 1220, "Exception thrown when converting input" + ex.getMessage());
         }
     }
 
