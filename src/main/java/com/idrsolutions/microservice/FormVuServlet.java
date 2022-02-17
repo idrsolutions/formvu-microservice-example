@@ -20,6 +20,7 @@
  */
 package com.idrsolutions.microservice;
 
+import com.idrsolutions.microservice.storage.Storage;
 import com.idrsolutions.microservice.utils.DefaultFileServlet;
 import com.idrsolutions.microservice.utils.SettingsValidator;
 import com.idrsolutions.microservice.utils.ZipHelper;
@@ -127,7 +128,7 @@ public class FormVuServlet extends BaseServlet {
             individual.setValue("previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
             individual.setValue("downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
 
-            IStorage storage = (IStorage) getServletContext().getAttribute("storage");
+            final Storage storage = (Storage) getServletContext().getAttribute("storage");
 
             if (storage != null) {
                 final String remoteUrl = storage.put(new File(outputDirStr + "/" + fileNameWithoutExt + ".zip"), fileNameWithoutExt + ".zip", individual.getUuid());
