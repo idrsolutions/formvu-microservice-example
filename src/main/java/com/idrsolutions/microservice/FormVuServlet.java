@@ -173,7 +173,7 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateString("org.jpedal.pdf2html.fontsToRasterizeInTextMode", "((INCLUDE=)|(EXCLUDE=))(.*?(,|$))+", false);
         settingsValidator.validateString("org.jpedal.pdf2html.formTag", ".*", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.generateSearchFile", false);
-        settingsValidator.validateFloat("org.jpedal.pdf2html.imageScale", new float[]{0.1f, 10}, false);
+        settingsValidator.validateFloat("org.jpedal.pdf2html.imageScale", new float[]{1, 10}, false);
         settingsValidator.validateString("org.jpedal.pdf2html.includedFonts", new String[]{"woff", "otf", "woff_base64", "otf_base64"}, false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineSVG", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.keepGlyfsSeparate", false);
