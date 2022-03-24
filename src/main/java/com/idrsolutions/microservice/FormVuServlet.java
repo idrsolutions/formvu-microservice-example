@@ -3,7 +3,7 @@
  *
  * Project Info: https://github.com/idrsolutions/formvu-microservice-example
  *
- * Copyright 2021 IDRsolutions
+ * Copyright 2022 IDRsolutions
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@
  */
 package com.idrsolutions.microservice;
 
+import com.idrsolutions.microservice.db.DBHandler;
+import com.idrsolutions.microservice.storage.Storage;
+import com.idrsolutions.microservice.utils.DefaultFileServlet;
 import com.idrsolutions.microservice.utils.SettingsValidator;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
@@ -34,6 +37,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -77,18 +81,23 @@ public class FormVuServlet extends BaseServlet {
      * See API docs for information on how this method communicates via the
      * individual object to the client.
      *
-     * @param individual The individual object associated with this conversion
-     * @param params The map of parameters that came with the request
+     * @param uuid The uuid of the conversion
      * @param inputFile The input file
      * @param outputDir The output directory of the converted file
      * @param contextUrl The context that this servlet is running in
      */
     @Override
-    protected void convert(Individual individual, Map<String, String[]> params,
+    protected void convert(String uuid,
                            File inputFile, File outputDir, String contextUrl) {
 
-        final Map<String, String> conversionParams = individual.getSettings() != null
-                ? individual.getSettings() : new HashMap<>();
+        final Map<String, String> conversionParams;
+        try {
+            final Map<String, String> settings = DBHandler.getInstance().getSettings(uuid);
+            conversionParams = settings != null ? settings : new HashMap<>();
+        } catch (final SQLException e) {
+            DBHandler.getInstance().setError(uuid, 500, "Database failure");
+            return;
+        }
 
         final String fileName = inputFile.getName();
         final String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
@@ -98,14 +107,14 @@ public class FormVuServlet extends BaseServlet {
         final String outputDirStr = outputDir.getAbsolutePath();
 
         if (!"pdf".equalsIgnoreCase(ext)) {
-            individual.doError(1070, "Internal error processing file - input file must be a PDF Form File");
+            DBHandler.getInstance().setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
             return;
         }
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
 
-        individual.setState("processing");
+        DBHandler.getInstance().setState(uuid, "processing");
 
         try {
             final File inFile = new File(inputDir + "/" + fileName);
@@ -127,16 +136,23 @@ public class FormVuServlet extends BaseServlet {
             ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
                     outputDirStr + "/" + fileNameWithoutExt + ".zip");
 
-            final String outputPathInDocroot = individual.getUuid() + "/" + fileNameWithoutExt;
+            final String outputPathInDocroot = uuid + "/" + DefaultFileServlet.encodeURI(fileNameWithoutExt);
 
-            individual.setValue("previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
-            individual.setValue("downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
+            DBHandler.getInstance().setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
+            DBHandler.getInstance().setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
 
-            individual.setState("processed");
+            final Storage storage = (Storage) getServletContext().getAttribute("storage");
+
+            if (storage != null) {
+                final String remoteUrl = storage.put(new File(outputDirStr + "/" + fileNameWithoutExt + ".zip"), fileNameWithoutExt + ".zip", uuid);
+                DBHandler.getInstance().setCustomValue(uuid, "remoteUrl", remoteUrl);
+            }
+
+            DBHandler.getInstance().setState(uuid, "processed");
 
         } catch (final Throwable ex) {
             LOG.log(Level.SEVERE, "Exception thrown when converting input", ex);
-            individual.doError(1220, "Exception thrown when converting input" + ex.getMessage());
+            DBHandler.getInstance().setError(uuid, 1220, "Exception thrown when converting input" + ex.getMessage());
         }
     }
 
@@ -148,12 +164,12 @@ public class FormVuServlet extends BaseServlet {
      *
      * @param request the request for this conversion
      * @param response the response object for the request
-     * @param individual the individual belonging to this conversion
+     * @param uuid the uuid of this conversion
      * @return true if the settings are parsed and validated successfully, false if not
      */
     @Override
     protected boolean validateRequest(final HttpServletRequest request, final HttpServletResponse response,
-                                      final Individual individual) {
+                                      final String uuid) {
 
         final Map<String, String> settings;
         try {
@@ -196,15 +212,17 @@ public class FormVuServlet extends BaseServlet {
         settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
         settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
         settingsValidator.validateString("org.jpedal.pdf2html.submitUrl", "[-a-zA-Z0-9@:%._\\+~#=]{1,256}([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableFDFJavaScript", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableFDFJavaScript", false); // Deprecated
         settingsValidator.validateBoolean("org.jpedal.pdf2html.useFormVuAPI", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.useDRFormFonts", false);
+        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableAcroFormJS", false);
 
         if (!settingsValidator.isValid()) {
             doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
             return false;
         }
 
-        individual.setSettings(settings);
+        request.setAttribute("com.idrsolutions.microservice.settings", settings);
 
         return true;
     }
