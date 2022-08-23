@@ -30,6 +30,7 @@ import org.jpedal.examples.html.PDFtoHTML5Converter;
 import org.jpedal.exception.PdfException;
 import org.jpedal.render.output.FormViewerOptions;
 import org.jpedal.render.output.html.HTMLConversionOptions;
+import org.jpedal.settings.FormVuSettingsValidator;
 
 import javax.json.stream.JsonParsingException;
 import javax.servlet.annotation.MultipartConfig;
@@ -179,46 +180,10 @@ public class FormVuServlet extends BaseServlet {
             return false;
         }
 
-        final SettingsValidator settingsValidator = new SettingsValidator(settings);
-
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.addJavaScript", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.completeDocument", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.compressImages", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.compressSVG", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.containerId", ".*", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.convertPDFExternalFileToOutputType", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.convertSpacesToNbsp", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.disableComments", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.disableLinkGeneration", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.embedImagesAsBase64Stream", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.encryptTempFiles", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.fontsToRasterizeInTextMode", "((INCLUDE=)|(EXCLUDE=))(.*?(,|$))+", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.formTag", ".*", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.generateSearchFile", false);
-        settingsValidator.validateFloat("org.jpedal.pdf2html.imageScale", new float[]{1, 10}, false);
-        settingsValidator.validateString("org.jpedal.pdf2html.includedFonts", new String[]{"woff", "otf", "woff_base64", "otf_base64"}, false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineSVG", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.keepGlyfsSeparate", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.logicalPageRange", "(\\s*((\\d+\\s*-\\s*\\d+)|(\\d+\\s*:\\s*\\d+)|(\\d+))\\s*(,|$)\\s*)+", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.omitNameDir", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.outputContentMode", validOutputContentModes, false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.outputThumbnails", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.password", ".*", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.realPageRange", "(\\s*((\\d+\\s*-\\s*\\d+)|(\\d+\\s*:\\s*\\d+)|(\\d+))\\s*(,|$)\\s*)+", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.scaling", "(\\d+\\.\\d+)|(\\d+x\\d+)|(fitWidth\\d+)|(fitHeight\\d+)|(\\d+)", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.separateTextToWords", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.textMode", validTextModeOptions, false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.useLegacyImageFileType", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.inlineJavaScriptAndCSS", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.noCheckboxOrRadioButtonImages", false);
-        settingsValidator.validateString("org.jpedal.pdf2html.submitUrl", "[-a-zA-Z0-9@:%._\\+~#=]{1,256}([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableFDFJavaScript", false); // Deprecated
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.useFormVuAPI", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.useDRFormFonts", false);
-        settingsValidator.validateBoolean("org.jpedal.pdf2html.enableAcroFormJS", false);
-
-        if (!settingsValidator.isValid()) {
-            doError(request, response, "Invalid settings detected.\n" + settingsValidator.getMessage(), 400);
+        try {
+            FormVuSettingsValidator.validate(settings, false);
+        } catch(final IllegalArgumentException e) {
+            doError(request, response, e.getMessage(), 400);
             return false;
         }
 
