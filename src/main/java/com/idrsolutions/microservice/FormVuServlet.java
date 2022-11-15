@@ -23,11 +23,11 @@ package com.idrsolutions.microservice;
 import com.idrsolutions.microservice.db.DBHandler;
 import com.idrsolutions.microservice.storage.Storage;
 import com.idrsolutions.microservice.utils.DefaultFileServlet;
-import com.idrsolutions.microservice.utils.SettingsValidator;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
 import org.jpedal.examples.html.PDFtoHTML5Converter;
 import org.jpedal.exception.PdfException;
+import org.jpedal.io.DefaultErrorTracker;
 import org.jpedal.render.output.FormViewerOptions;
 import org.jpedal.render.output.html.HTMLConversionOptions;
 import org.jpedal.settings.FormVuSettingsValidator;
@@ -41,6 +41,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -106,6 +107,7 @@ public class FormVuServlet extends BaseServlet {
         // To avoid repeated calls to getParent() and getAbsolutePath()
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
+        final Properties properties = (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
 
         if (!"pdf".equalsIgnoreCase(ext)) {
             DBHandler.getInstance().setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
@@ -132,7 +134,16 @@ public class FormVuServlet extends BaseServlet {
             final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
             final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
             final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
+
+            final long maxDuration = Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
+            html.setCustomErrorTracker(new DurationTracker(uuid, maxDuration));
+
             html.convert();
+
+            if ("1230".equals(DBHandler.getInstance().getStatus(uuid).get("errorCode"))) {
+                LOG.log(Level.SEVERE, "Conversion exceeded max duration of " + maxDuration + "ms");
+                return;
+            }
 
             ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
                     outputDirStr + "/" + fileNameWithoutExt + ".zip");
@@ -191,4 +202,29 @@ public class FormVuServlet extends BaseServlet {
 
         return true;
     }
+
+    private static class DurationTracker extends DefaultErrorTracker {
+
+        private final String uuid;
+        private final long startTime;
+        private final long maxDuration;
+
+        public DurationTracker(final String uuid, final long maxDuration) {
+            this.uuid = uuid;
+            this.maxDuration = maxDuration;
+            startTime = System.currentTimeMillis();
+        }
+
+        @Override
+        public boolean checkForExitRequest(int dataPointer, int streamSize) {
+            if (System.currentTimeMillis() - startTime > maxDuration) {
+                DBHandler.getInstance().setError(uuid, 1230, "Conversion exceeded max duration of " + maxDuration + "ms");
+                return true;
+            }
+
+            return false;
+        }
+
+    }
+
 }
