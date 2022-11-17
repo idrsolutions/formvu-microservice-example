@@ -141,7 +141,8 @@ public class FormVuServlet extends BaseServlet {
             html.convert();
 
             if ("1230".equals(DBHandler.getInstance().getStatus(uuid).get("errorCode"))) {
-                LOG.log(Level.SEVERE, "Conversion exceeded max duration of " + maxDuration + "ms");
+                final String message = String.format("Conversion %s exceeded max duration of %dms", uuid, maxDuration);
+                LOG.log(Level.INFO, message);
                 return;
             }
 
