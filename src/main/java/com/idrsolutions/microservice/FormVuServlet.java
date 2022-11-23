@@ -22,12 +22,12 @@ package com.idrsolutions.microservice;
 
 import com.idrsolutions.microservice.db.DBHandler;
 import com.idrsolutions.microservice.storage.Storage;
+import com.idrsolutions.microservice.utils.ConversionTracker;
 import com.idrsolutions.microservice.utils.DefaultFileServlet;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
 import org.jpedal.examples.html.PDFtoHTML5Converter;
 import org.jpedal.exception.PdfException;
-import org.jpedal.io.DefaultErrorTracker;
 import org.jpedal.render.output.FormViewerOptions;
 import org.jpedal.render.output.html.HTMLConversionOptions;
 import org.jpedal.settings.FormVuSettingsValidator;
@@ -116,7 +116,29 @@ public class FormVuServlet extends BaseServlet {
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
+        final int pageCount;
+        try {
+            final PdfDecoderServer decoder = new PdfDecoderServer(false);
+            decoder.openPdfFile(inputFile.getAbsolutePath());
 
+            decoder.setEncryptionPassword(conversionParams.getOrDefault("org.jpedal.pdf2html.password", ""));
+
+            if (decoder.isEncrypted() && !decoder.isPasswordSupplied()) {
+                LOG.log(Level.SEVERE, "Invalid Password");
+                DBHandler.getInstance().setError(uuid, 1070, "Invalid password supplied.");
+                return;
+            }
+
+            pageCount = decoder.getPageCount();
+            DBHandler.getInstance().setCustomValue(uuid, "pageCount", String.valueOf(pageCount));
+            DBHandler.getInstance().setCustomValue(uuid, "pagesConverted", "0");
+            decoder.closePdfFile();
+            decoder.dispose();
+        } catch (final PdfException e) {
+            LOG.log(Level.SEVERE, "Invalid PDF", e);
+            DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
+            return;
+        }
         DBHandler.getInstance().setState(uuid, "processing");
 
         try {
@@ -136,7 +158,7 @@ public class FormVuServlet extends BaseServlet {
             final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
 
             final long maxDuration = Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
-            html.setCustomErrorTracker(new DurationTracker(uuid, maxDuration));
+            html.setCustomErrorTracker(new ConversionTracker(uuid, maxDuration));
 
             html.convert();
 
@@ -203,29 +225,4 @@ public class FormVuServlet extends BaseServlet {
 
         return true;
     }
-
-    private static class DurationTracker extends DefaultErrorTracker {
-
-        private final String uuid;
-        private final long startTime;
-        private final long maxDuration;
-
-        public DurationTracker(final String uuid, final long maxDuration) {
-            this.uuid = uuid;
-            this.maxDuration = maxDuration;
-            startTime = System.currentTimeMillis();
-        }
-
-        @Override
-        public boolean checkForExitRequest(int dataPointer, int streamSize) {
-            if (System.currentTimeMillis() - startTime > maxDuration) {
-                DBHandler.getInstance().setError(uuid, 1230, "Conversion exceeded max duration of " + maxDuration + "ms");
-                return true;
-            }
-
-            return false;
-        }
-
-    }
-
 }
