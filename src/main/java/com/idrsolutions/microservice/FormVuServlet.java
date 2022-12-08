@@ -116,7 +116,6 @@ public class FormVuServlet extends BaseServlet {
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
-        final int pageCount;
         try {
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inputFile.getAbsolutePath());
@@ -124,7 +123,8 @@ public class FormVuServlet extends BaseServlet {
 
             final boolean isForm = decoder.isForm();
             final boolean incorrectPassword = decoder.isEncrypted() && !decoder.isPasswordSupplied();
-
+            final int pageCount = decoder.getPageCount();
+            
             decoder.closePdfFile();
             decoder.dispose();
 
@@ -140,7 +140,6 @@ public class FormVuServlet extends BaseServlet {
                 return;
             }
 
-            pageCount = decoder.getPageCount();
             DBHandler.getInstance().setCustomValue(uuid, "pageCount", String.valueOf(pageCount));
             DBHandler.getInstance().setCustomValue(uuid, "pagesConverted", "0");
 
