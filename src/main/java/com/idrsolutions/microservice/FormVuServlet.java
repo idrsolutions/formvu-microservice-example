@@ -120,20 +120,30 @@ public class FormVuServlet extends BaseServlet {
         try {
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inputFile.getAbsolutePath());
-
             decoder.setEncryptionPassword(conversionParams.getOrDefault("org.jpedal.pdf2html.password", ""));
 
-            if (decoder.isEncrypted() && !decoder.isPasswordSupplied()) {
+            final boolean isForm = decoder.isForm();
+            final boolean incorrectPassword = decoder.isEncrypted() && !decoder.isPasswordSupplied();
+
+            decoder.closePdfFile();
+            decoder.dispose();
+
+            if (incorrectPassword) {
                 LOG.log(Level.SEVERE, "Invalid Password");
                 DBHandler.getInstance().setError(uuid, 1070, "Invalid password supplied.");
+                return;
+            }
+
+            if (!isForm) {
+                LOG.log(Level.SEVERE, "Invalid PDF - Provided PDF file does not contain any forms.");
+                DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
                 return;
             }
 
             pageCount = decoder.getPageCount();
             DBHandler.getInstance().setCustomValue(uuid, "pageCount", String.valueOf(pageCount));
             DBHandler.getInstance().setCustomValue(uuid, "pagesConverted", "0");
-            decoder.closePdfFile();
-            decoder.dispose();
+
         } catch (final PdfException e) {
             LOG.log(Level.SEVERE, "Invalid PDF", e);
             DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
@@ -143,16 +153,6 @@ public class FormVuServlet extends BaseServlet {
 
         try {
             final File inFile = new File(inputDir + "/" + fileName);
-            final PdfDecoderServer decoder = new PdfDecoderServer(false);
-            decoder.openPdfFile(inFile.getAbsolutePath());
-            final boolean isForm = decoder.isForm();
-            decoder.closePdfFile();
-            decoder.dispose();
-
-            if (!isForm) {
-                throw new PdfException("Provided PDF file does not contain any forms.");
-            }
-
             final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
             final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
             final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
