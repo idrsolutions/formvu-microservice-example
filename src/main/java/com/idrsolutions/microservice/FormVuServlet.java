@@ -135,8 +135,8 @@ public class FormVuServlet extends BaseServlet {
             }
 
             if (!isForm) {
-                LOG.log(Level.SEVERE, "Invalid PDF - Provided PDF file does not contain any forms.");
-                DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
+                LOG.log(Level.SEVERE, "Exception thrown when converting input - PDF file does not contain any forms.");
+                DBHandler.getInstance().setError(uuid, 1060, "Exception thrown when converting input Provided - PDF file does not contain any forms.");
                 return;
             }
 
