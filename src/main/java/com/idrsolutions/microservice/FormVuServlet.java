@@ -22,8 +22,8 @@ package com.idrsolutions.microservice;
 
 import com.idrsolutions.microservice.db.DBHandler;
 import com.idrsolutions.microservice.storage.Storage;
+import com.idrsolutions.microservice.utils.ConversionTracker;
 import com.idrsolutions.microservice.utils.DefaultFileServlet;
-import com.idrsolutions.microservice.utils.SettingsValidator;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
 import org.jpedal.examples.html.PDFtoHTML5Converter;
@@ -41,6 +41,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -106,6 +107,7 @@ public class FormVuServlet extends BaseServlet {
         // To avoid repeated calls to getParent() and getAbsolutePath()
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
+        final Properties properties = (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
 
         if (!"pdf".equalsIgnoreCase(ext)) {
             DBHandler.getInstance().setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
@@ -114,25 +116,56 @@ public class FormVuServlet extends BaseServlet {
 
         //Makes the directory for the output file
         new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
+        try {
+            final PdfDecoderServer decoder = new PdfDecoderServer(false);
+            decoder.openPdfFile(inputFile.getAbsolutePath());
+            decoder.setEncryptionPassword(conversionParams.getOrDefault("org.jpedal.pdf2html.password", ""));
 
+            final boolean isForm = decoder.isForm();
+            final boolean incorrectPassword = decoder.isEncrypted() && !decoder.isPasswordSupplied();
+            final int pageCount = decoder.getPageCount();
+
+            decoder.closePdfFile();
+            decoder.dispose();
+
+            if (incorrectPassword) {
+                LOG.log(Level.SEVERE, "Invalid Password");
+                DBHandler.getInstance().setError(uuid, 1070, "Invalid password supplied.");
+                return;
+            }
+
+            if (!isForm) {
+                LOG.log(Level.SEVERE, "Invalid PDF - Provided PDF file does not contain any forms.");
+                DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF - Provided PDF file does not contain any forms.");
+                return;
+            }
+
+            DBHandler.getInstance().setCustomValue(uuid, "pageCount", String.valueOf(pageCount));
+            DBHandler.getInstance().setCustomValue(uuid, "pagesConverted", "0");
+
+        } catch (final PdfException e) {
+            LOG.log(Level.SEVERE, "Invalid PDF", e);
+            DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
+            return;
+        }
         DBHandler.getInstance().setState(uuid, "processing");
 
         try {
             final File inFile = new File(inputDir + "/" + fileName);
-            final PdfDecoderServer decoder = new PdfDecoderServer(false);
-            decoder.openPdfFile(inFile.getAbsolutePath());
-            final boolean isForm = decoder.isForm();
-            decoder.closePdfFile();
-            decoder.dispose();
-
-            if (!isForm) {
-                throw new PdfException("Provided PDF file does not contain any forms.");
-            }
-
             final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
             final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
             final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
+
+            final long maxDuration = Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
+            html.setCustomErrorTracker(new ConversionTracker(uuid, maxDuration));
+
             html.convert();
+
+            if ("1230".equals(DBHandler.getInstance().getStatus(uuid).get("errorCode"))) {
+                final String message = String.format("Conversion %s exceeded max duration of %dms", uuid, maxDuration);
+                LOG.log(Level.INFO, message);
+                return;
+            }
 
             ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
                     outputDirStr + "/" + fileNameWithoutExt + ".zip");
