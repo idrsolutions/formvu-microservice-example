@@ -151,6 +151,10 @@ public class FormVuServlet extends BaseServlet {
         DBHandler.getInstance().setState(uuid, "processing");
 
         try {
+            final String originalFileName = DBHandler.getInstance().getCustomData(uuid).get("originalFileName");
+            conversionParams.put("org.jpedal.pdf2html.originalFileName", originalFileName);
+            conversionParams.put("org.jpedal.pdf2html.omitNameDir", "true");
+
             final File inFile = new File(inputDir + "/" + fileName);
             final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
             final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
