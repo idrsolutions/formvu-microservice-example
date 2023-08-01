@@ -103,7 +103,6 @@ public class FormVuServlet extends BaseServlet {
 
         final String fileName = inputFile.getName();
         final String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
-        final String fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
         // To avoid repeated calls to getParent() and getAbsolutePath()
         final String inputDir = inputFile.getParent();
         final String outputDirStr = outputDir.getAbsolutePath();
@@ -115,7 +114,8 @@ public class FormVuServlet extends BaseServlet {
         }
 
         //Makes the directory for the output file
-        new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
+        final File conversionDir = new File(outputDirStr, uuid);
+        conversionDir.mkdirs();
         try {
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inputFile.getAbsolutePath());
@@ -151,10 +151,14 @@ public class FormVuServlet extends BaseServlet {
         DBHandler.getInstance().setState(uuid, "processing");
 
         try {
+            final String originalFileName = DBHandler.getInstance().getCustomData(uuid).get("originalFileName");
+            conversionParams.put("org.jpedal.pdf2html.originalFileName", originalFileName);
+            conversionParams.put("org.jpedal.pdf2html.omitNameDir", "true");
+
             final File inFile = new File(inputDir + "/" + fileName);
             final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
             final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
-            final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
+            final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, conversionDir, htmlOptions, viewerOptions);
 
             final long maxDuration = Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
             html.setCustomErrorTracker(new ConversionTracker(uuid, maxDuration));
@@ -167,18 +171,16 @@ public class FormVuServlet extends BaseServlet {
                 return;
             }
 
-            ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
-                    outputDirStr + "/" + fileNameWithoutExt + ".zip");
+            ZipHelper.zipFolder(outputDirStr + "/" + uuid,
+                    outputDirStr + "/" + uuid + ".zip");
 
-            final String outputPathInDocroot = uuid + "/" + DefaultFileServlet.encodeURI(fileNameWithoutExt);
-
-            DBHandler.getInstance().setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
-            DBHandler.getInstance().setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
+            DBHandler.getInstance().setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + uuid + "/form.html");
+            DBHandler.getInstance().setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + uuid + ".zip");
 
             final Storage storage = (Storage) getServletContext().getAttribute("storage");
 
             if (storage != null) {
-                final String remoteUrl = storage.put(new File(outputDirStr + "/" + fileNameWithoutExt + ".zip"), fileNameWithoutExt + ".zip", uuid);
+                final String remoteUrl = storage.put(new File(outputDirStr + "/" + uuid + ".zip"), uuid + ".zip", uuid);
                 DBHandler.getInstance().setCustomValue(uuid, "remoteUrl", remoteUrl);
             }
 
