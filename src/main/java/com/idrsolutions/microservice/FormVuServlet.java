@@ -141,9 +141,9 @@ public class FormVuServlet extends BaseServlet {
             final String servletDirectory = getServletContext().getRealPath("");
             final String webappDirectory;
             if (servletDirectory != null) {
-                webappDirectory = servletDirectory + "/WEB-INF/lib/formvu.jar" + File.pathSeparatorChar + '.';
+                webappDirectory = servletDirectory + "/WEB-INF/lib/formvu.jar";
             } else {
-                webappDirectory = "WEB-INF/lib/formvu.jar:.";
+                webappDirectory = "WEB-INF/lib/formvu.jar";
             }
 
             final long maxDuration =
