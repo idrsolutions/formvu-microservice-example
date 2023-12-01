@@ -3,8 +3,6 @@
  *
  * Project Info: https://github.com/idrsolutions/formvu-microservice-example
  *
- * Copyright 2023 IDRsolutions
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,14 +20,11 @@ package com.idrsolutions.microservice;
 
 import com.idrsolutions.microservice.db.DBHandler;
 import com.idrsolutions.microservice.storage.Storage;
-import com.idrsolutions.microservice.utils.ConversionTracker;
 import com.idrsolutions.microservice.utils.DefaultFileServlet;
+import com.idrsolutions.microservice.utils.ProcessUtils;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
-import org.jpedal.examples.html.PDFtoHTML5Converter;
 import org.jpedal.exception.PdfException;
-import org.jpedal.render.output.FormViewerOptions;
-import org.jpedal.render.output.html.HTMLConversionOptions;
 import org.jpedal.settings.FormVuSettingsValidator;
 
 import javax.json.stream.JsonParsingException;
@@ -39,11 +34,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static java.io.File.separator;
 
 /**
  * Provides an API to use FormVu on its own dedicated app server. See the API
@@ -63,20 +62,6 @@ public class FormVuServlet extends BaseServlet {
         OutputFileServlet.setBasePath(USER_HOME + "/.idr/formvu-microservice/output");
     }
 
-    private static final String[] validTextModeOptions = {
-            "svg_realtext",
-            "svg_shapetext_selectable",
-            "svg_shapetext_nonselectable",
-            "image_realtext",
-            "image_shapetext_selectable",
-            "image_shapetext_nonselectable"};
-
-    private static final String[] validOutputContentModes = {
-            "DEFAULT",
-            "NO_FDFXFADUMP",
-            "REDUCED_CONTENT",
-            "NO_MENU"};
-
     /**
      * Converts given pdf file to html using FormVu.
      * <p>
@@ -89,9 +74,8 @@ public class FormVuServlet extends BaseServlet {
      * @param contextUrl The context that this servlet is running in
      */
     @Override
-    protected void convert(String uuid,
-                           File inputFile, File outputDir, String contextUrl) {
-
+    protected void convert(final String uuid, final File inputFile,
+                           final File outputDir, final String contextUrl) {
         final Map<String, String> conversionParams;
         try {
             final Map<String, String> settings = DBHandler.getInstance().getSettings(uuid);
@@ -102,20 +86,21 @@ public class FormVuServlet extends BaseServlet {
         }
 
         final String fileName = inputFile.getName();
-        final String ext = fileName.substring(fileName.lastIndexOf(".") + 1);
-        final String fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."));
-        // To avoid repeated calls to getParent() and getAbsolutePath()
-        final String inputDir = inputFile.getParent();
+        final String ext = fileName.substring(fileName.lastIndexOf('.') + 1);
+        final String fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        // To avoid repeated calls to getAbsolutePath()
         final String outputDirStr = outputDir.getAbsolutePath();
-        final Properties properties = (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
+        final Properties properties =
+                (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
 
         if (!"pdf".equalsIgnoreCase(ext)) {
-            DBHandler.getInstance().setError(uuid, 1070, "Internal error processing file - input file must be a PDF Form File");
+            DBHandler.getInstance().setError(uuid, 1070,
+                    "Internal error processing file - input file must be a PDF Form File");
             return;
         }
 
         //Makes the directory for the output file
-        new File(outputDirStr + "/" + fileNameWithoutExt).mkdirs();
+        new File(outputDirStr + separator + fileNameWithoutExt).mkdirs();
         try {
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inputFile.getAbsolutePath());
@@ -136,7 +121,8 @@ public class FormVuServlet extends BaseServlet {
 
             if (!isForm) {
                 LOG.log(Level.SEVERE, "Invalid PDF - Provided PDF file does not contain any forms.");
-                DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF - Provided PDF file does not contain any forms.");
+                DBHandler.getInstance().setError(uuid, 1060,
+                        "Invalid PDF - Provided PDF file does not contain any forms.");
                 return;
             }
 
@@ -148,52 +134,101 @@ public class FormVuServlet extends BaseServlet {
             DBHandler.getInstance().setError(uuid, 1060, "Invalid PDF");
             return;
         }
-        DBHandler.getInstance().setState(uuid, "processing");
 
         try {
-            final File inFile = new File(inputDir + "/" + fileName);
-            final HTMLConversionOptions htmlOptions = new HTMLConversionOptions(conversionParams);
-            final FormViewerOptions viewerOptions = new FormViewerOptions(conversionParams);
-            final PDFtoHTML5Converter html = new PDFtoHTML5Converter(inFile, outputDir, htmlOptions, viewerOptions);
+            DBHandler.getInstance().setState(uuid, "processing");
 
-            final long maxDuration = Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
-            html.setCustomErrorTracker(new ConversionTracker(uuid, maxDuration));
-
-            html.convert();
-
-            if ("1230".equals(DBHandler.getInstance().getStatus(uuid).get("errorCode"))) {
-                final String message = String.format("Conversion %s exceeded max duration of %dms", uuid, maxDuration);
-                LOG.log(Level.INFO, message);
-                return;
+            final String servletDirectory = getServletContext().getRealPath("");
+            final String webappDirectory;
+            if (servletDirectory != null) {
+                webappDirectory = servletDirectory + "/WEB-INF/lib/formvu.jar";
+            } else {
+                webappDirectory = "WEB-INF/lib/formvu.jar";
             }
 
-            ZipHelper.zipFolder(outputDirStr + "/" + fileNameWithoutExt,
-                    outputDirStr + "/" + fileNameWithoutExt + ".zip");
+            final long maxDuration =
+                    Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
+            final ProcessUtils.Result result = convertFileToHTML(conversionParams, uuid,
+                    webappDirectory, inputFile, outputDir, maxDuration);
 
-            final String outputPathInDocroot = uuid + "/" + DefaultFileServlet.encodeURI(fileNameWithoutExt);
+            switch (result) {
+                case SUCCESS:
+                    ZipHelper.zipFolder(outputDirStr + separator + fileNameWithoutExt,
+                            outputDirStr + separator + fileNameWithoutExt + ".zip");
+                    final String outputPathInDocroot = uuid + '/' + DefaultFileServlet.encodeURI(fileNameWithoutExt);
+                    DBHandler.getInstance().setCustomValue(uuid, "previewUrl",
+                            contextUrl + "/output/" + outputPathInDocroot + "/form.html");
+                    DBHandler.getInstance().setCustomValue(uuid, "downloadUrl",
+                            contextUrl + "/output/" + outputPathInDocroot + ".zip");
 
-            DBHandler.getInstance().setCustomValue(uuid, "previewUrl", contextUrl + "/output/" + outputPathInDocroot + "/form.html");
-            DBHandler.getInstance().setCustomValue(uuid, "downloadUrl", contextUrl + "/output/" + outputPathInDocroot + ".zip");
-
-            final Storage storage = (Storage) getServletContext().getAttribute("storage");
-
-            if (storage != null) {
-                final String remoteUrl = storage.put(new File(outputDirStr + "/" + fileNameWithoutExt + ".zip"), fileNameWithoutExt + ".zip", uuid);
-                DBHandler.getInstance().setCustomValue(uuid, "remoteUrl", remoteUrl);
+                    final Storage storage = (Storage) getServletContext().getAttribute("storage");
+                    if (storage != null) {
+                        final String remoteUrl =
+                                storage.put(new File(outputDirStr + separator + fileNameWithoutExt + ".zip"),
+                                fileNameWithoutExt + ".zip", uuid);
+                        DBHandler.getInstance().setCustomValue(uuid, "remoteUrl", remoteUrl);
+                    }
+                    DBHandler.getInstance().setState(uuid, "processed");
+                    break;
+                case TIMEOUT:
+                    final String message = String.format("Conversion %s exceeded max duration of %dms", uuid,
+                            maxDuration);
+                    LOG.log(Level.INFO, message);
+                    DBHandler.getInstance().setError(uuid, 1230,
+                            "Conversion exceeded max duration of " + maxDuration + "ms");
+                    break;
+                case ERROR:
+                    LOG.log(Level.SEVERE, "An error occurred during the conversion");
+                    DBHandler.getInstance().setError(uuid, 1220,
+                            "An error occurred during the conversion");
+                    break;
             }
-
-            DBHandler.getInstance().setState(uuid, "processed");
-
         } catch (final Throwable ex) {
             LOG.log(Level.SEVERE, "Exception thrown when converting input", ex);
-            DBHandler.getInstance().setError(uuid, 1220, "Exception thrown when converting input: " + ex.getMessage());
+            DBHandler.getInstance().setError(uuid, 1220,
+                    "Exception thrown when converting input: " + ex.getMessage());
         }
+    }
+
+    private ProcessUtils.Result convertFileToHTML(final Map<String, String> conversionParams, final String uuid, final String webappDirectory, final File inputPdf, final File outputDir, final long maxDuration) {
+        final ArrayList<String> commandArgs = new ArrayList<>();
+        commandArgs.add("java");
+
+        final Properties properties =
+                (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
+        final int memoryLimit =
+                Integer.parseInt(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_CONVERSION_MEMORY));
+        final int remoteTrackerPort = Integer.parseInt((String) properties.get(BaseServletContextListener.KEY_PROPERTY_REMOTE_TRACKING_PORT));
+
+        if (memoryLimit > 0) {
+            commandArgs.add("-Xmx" + memoryLimit + 'M');
+        }
+
+        if (!conversionParams.isEmpty()) {
+            final Set<String> keys = conversionParams.keySet();
+            for (final String key : keys) {
+                final String value = conversionParams.get(key);
+                commandArgs.add("-D" + key + '=' + value);
+            }
+        }
+
+        commandArgs.add("-Dcom.idrsolutions.remoteTracker.port=" + remoteTrackerPort);
+        commandArgs.add("-Dcom.idrsolutions.remoteTracker.uuid=" + uuid);
+
+        commandArgs.add("-cp");
+        commandArgs.add(webappDirectory);
+        commandArgs.add("org.jpedal.examples.html.FormVu");
+        commandArgs.add(inputPdf.getAbsolutePath());
+        commandArgs.add(outputDir.getAbsolutePath());
+
+        return ProcessUtils.runProcess(commandArgs.toArray(new String[0]), inputPdf.getParentFile(), uuid,
+                "FormVu Conversion", maxDuration);
     }
 
     /**
      * Validates the settings parameter passed to the request. It will parse the conversionParams,
      * validate them, and then set the params in the Individual object.
-     *
+     * <p>
      * If settings are not parsed or validated, doError will be called.
      *
      * @param request the request for this conversion
@@ -208,14 +243,15 @@ public class FormVuServlet extends BaseServlet {
         final Map<String, String> settings;
         try {
             settings = parseSettings(request.getParameter("settings"));
-        } catch (JsonParsingException exception) {
-            doError(request, response, "Error encountered when parsing settings JSON <" + exception.getMessage() + '>', 400);
+        } catch (final JsonParsingException exception) {
+            doError(request, response,
+                    "Error encountered when parsing settings JSON <" + exception.getMessage() + '>', 400);
             return false;
         }
 
         try {
             FormVuSettingsValidator.validate(settings, false);
-        } catch(final IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             doError(request, response, e.getMessage(), 400);
             return false;
         }
