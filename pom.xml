@@ -6,7 +6,7 @@
     <groupId>com.idrsolutions</groupId>
     <artifactId>formvu-microservice-example</artifactId>
     <packaging>war</packaging>
-    <version>3.1.1</version>
+    <version>4.0.2</version>
     <name>FormVu Microservice Example</name>
 
     <dependencies>
@@ -19,7 +19,7 @@
         <dependency>
             <groupId>com.idrsolutions</groupId>
             <artifactId>base-microservice-example</artifactId>
-            <version>10.2.1</version>
+            <version>12.0.2</version>
         </dependency>
         <dependency>
             <groupId>formvu</groupId>
