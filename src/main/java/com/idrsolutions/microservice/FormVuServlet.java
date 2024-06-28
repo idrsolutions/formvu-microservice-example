@@ -159,7 +159,7 @@ public class FormVuServlet extends BaseServlet {
             switch (result) {
                 case SUCCESS:
                     final File outputZip = new File(outputDir.getParentFile(), uuid + ".zip");
-                    ZipHelper.zipFolder(outputDir, outputZip);
+                    ZipHelper.zipFolder(outputDir, outputZip, false);
 
                     DBHandler.getInstance().setCustomValue(uuid, "previewUrl",
                             contextUrl + "/output/" + uuid + "/form.html");
