@@ -20,7 +20,6 @@ package com.idrsolutions.microservice;
 
 import com.idrsolutions.microservice.db.DBHandler;
 import com.idrsolutions.microservice.storage.Storage;
-import com.idrsolutions.microservice.utils.DefaultFileServlet;
 import com.idrsolutions.microservice.utils.ProcessUtils;
 import com.idrsolutions.microservice.utils.ZipHelper;
 import org.jpedal.PdfDecoderServer;
@@ -41,8 +40,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static java.io.File.separator;
 
 /**
  * Provides an API to use FormVu on its own dedicated app server. See the API
@@ -70,12 +67,10 @@ public class FormVuServlet extends BaseServlet {
      *
      * @param uuid The uuid of the conversion
      * @param inputFile The input file
-     * @param outputDir The output directory of the converted file
      * @param contextUrl The context that this servlet is running in
      */
     @Override
-    protected void convert(final String uuid, final File inputFile,
-                           final File outputDir, final String contextUrl) {
+    protected void convert(final String uuid, final File inputFile, final String contextUrl) {
         final Map<String, String> conversionParams;
         try {
             final Map<String, String> settings = DBHandler.getInstance().getSettings(uuid);
@@ -87,15 +82,9 @@ public class FormVuServlet extends BaseServlet {
 
         final String fileName = inputFile.getName();
         final String ext = fileName.substring(fileName.lastIndexOf('.') + 1);
-        final String fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
 
-        if (fileNameWithoutExt.isEmpty() || ".".equals(fileNameWithoutExt) || "..".equals(fileNameWithoutExt)) {
-            DBHandler.getInstance().setError(uuid, 1090, "Disallowed filename");
-            return;
-        }
+        final File outputDir = new File(getOutputPath(), uuid);
 
-        // To avoid repeated calls to getAbsolutePath()
-        final String outputDirStr = outputDir.getAbsolutePath();
         final Properties properties =
                 (Properties) getServletContext().getAttribute(BaseServletContextListener.KEY_PROPERTIES);
 
@@ -106,7 +95,12 @@ public class FormVuServlet extends BaseServlet {
         }
 
         //Makes the directory for the output file
-        new File(outputDirStr + separator + fileNameWithoutExt).mkdirs();
+        if (!outputDir.mkdirs()) {
+            LOG.log(Level.SEVERE, "Failed to create output directory: " + outputDir.getAbsolutePath());
+            DBHandler.getInstance().setError(uuid, 500, "File system failure");
+            return;
+        }
+
         try {
             final PdfDecoderServer decoder = new PdfDecoderServer(false);
             decoder.openPdfFile(inputFile.getAbsolutePath());
@@ -154,24 +148,27 @@ public class FormVuServlet extends BaseServlet {
 
             final long maxDuration =
                     Long.parseLong(properties.getProperty(BaseServletContextListener.KEY_PROPERTY_MAX_CONVERSION_DURATION));
+
+            final String originalFileName = DBHandler.getInstance().getCustomData(uuid).get("originalFileName");
+            conversionParams.put("org.jpedal.pdf2html.originalFileName", originalFileName);
+            conversionParams.put("org.jpedal.pdf2html.omitNameDir", "true");
+
             final ProcessUtils.Result result = convertFileToHTML(conversionParams, uuid,
                     webappDirectory, inputFile, outputDir, maxDuration);
 
             switch (result) {
                 case SUCCESS:
-                    ZipHelper.zipFolder(outputDirStr + separator + fileNameWithoutExt,
-                            outputDirStr + separator + fileNameWithoutExt + ".zip");
-                    final String outputPathInDocroot = uuid + '/' + DefaultFileServlet.encodeURI(fileNameWithoutExt);
+                    final File outputZip = new File(outputDir.getParentFile(), uuid + ".zip");
+                    ZipHelper.zipFolder(outputDir, outputZip, false);
+
                     DBHandler.getInstance().setCustomValue(uuid, "previewUrl",
-                            contextUrl + "/output/" + outputPathInDocroot + "/form.html");
+                            contextUrl + "/output/" + uuid + "/form.html");
                     DBHandler.getInstance().setCustomValue(uuid, "downloadUrl",
-                            contextUrl + "/output/" + outputPathInDocroot + ".zip");
+                            contextUrl + "/output/" + uuid + ".zip");
 
                     final Storage storage = (Storage) getServletContext().getAttribute("storage");
                     if (storage != null) {
-                        final String remoteUrl =
-                                storage.put(new File(outputDirStr + separator + fileNameWithoutExt + ".zip"),
-                                fileNameWithoutExt + ".zip", uuid);
+                        final String remoteUrl = storage.put(outputZip, uuid + ".zip", uuid);
                         DBHandler.getInstance().setCustomValue(uuid, "remoteUrl", remoteUrl);
                     }
                     DBHandler.getInstance().setState(uuid, "processed");
