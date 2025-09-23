@@ -6,7 +6,7 @@
     <groupId>com.idrsolutions</groupId>
     <artifactId>formvu-microservice-example</artifactId>
     <packaging>war</packaging>
-    <version>6.0.0</version>
+    <version>6.0.1</version>
     <name>FormVu Microservice Example</name>
 
     <properties>
@@ -26,8 +26,8 @@
             <version>14.0.0</version>
         </dependency>
         <dependency>
-            <groupId>formvu</groupId>
-            <artifactId>com.idrsolutions</artifactId>
+            <groupId>com.idrsolutions</groupId>
+            <artifactId>formvu</artifactId>
             <version>1.0</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/formvu.jar</systemPath>
