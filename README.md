@@ -36,9 +36,9 @@ This will generate the formvu-micrservice.war file inside the /target directory.
 
 ### Deployment: ###
 
-See our [application server tutorials](https://support.idrsolutions.com/formvu/tutorials/cloud/app-server/) for instructions on deployment.
+See our [application server tutorials](https://www.idrsolutions.com/docs/formvu/deploy-to-java-application-server/) for instructions on deployment.
 
-See our [cloud platform tutorials](https://support.idrsolutions.com/formvu/tutorials/cloud/docker/) for instructions on cloud deployment.
+See our [cloud platform tutorials](https://www.idrsolutions.com/docs/formvu/host-docker-web-service/) for instructions on cloud deployment.
 
 ### docker-compose deployment: ###
 
@@ -52,7 +52,7 @@ You can interact with the FormVu Microservice Example using the REST API.
 
 A complete list of raw requests that can be used can be found [here](/API.md).
 
-For specific languages, see our tutorials on how to [run FormVu from other languages](https://support.idrsolutions.com/formvu/tutorials/cloud/languages/).
+For specific languages, see our tutorials on how to [run FormVu from other languages](https://www.idrsolutions.com/docs/formvu/using-the-web-service-api/).
 
 -----
 
